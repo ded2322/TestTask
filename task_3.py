@@ -12,9 +12,8 @@
 
 from decimal import Decimal
 from django.db import transaction
-
+from django.db.models import F
 from myapp.models import Expenditure
-
 
 def update_with_discount(section_id: int, discount: Decimal):
     """
@@ -29,12 +28,8 @@ def update_with_discount(section_id: int, discount: Decimal):
     # Рассчитываем множитель скидки
     discount_multiplier = (Decimal(100) - discount) / Decimal(100)
 
-    # Получаем все расценки для указанной секции
-    expenditures = Expenditure.objects.filter(section_id=section_id)
-
-    # Применяем скидку и обновляем цены
+    # Применяем скидку и обновляем цены для всех расценок в одной транзакции
     with transaction.atomic():
-        for expenditure in expenditures:
-            new_price = expenditure.price * discount_multiplier
-            expenditure.price = new_price
-            expenditure.save(update_fields=['price'])
+        Expenditure.objects.filter(section_id=section_id).update(
+            price=F('price') * discount_multiplier
+        )
